@@ -129,9 +129,18 @@ class ApiRequestWorker(appContext: Context, workerParams: WorkerParameters) : Co
     }
 
     private fun formatBitcoinChange24hPercent(change: Double): String {
+        val icon = if (change >= 0) {
+            "↑"
+        } else {
+            "↓"
+        }
+
+        // TODO Add rocket for change >= 5%
+
         val symbols = DecimalFormatSymbols(Locale.GERMANY)
         symbols.decimalSeparator = ','
         val formatter = DecimalFormat("#,##0.00", symbols)
-        return "${formatter.format(change)} %"
+
+        return "$icon ${formatter.format(change)} %"
     }
 }

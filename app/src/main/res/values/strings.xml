@@ -12,6 +12,6 @@
     <string name="appwidget_last_update_text_default">Last update: never</string>
     <string name="appwidget_last_update_text_description">When the bitcoin prices was last updated</string>
 
-    <string name="appwidget_24h_change_text_default">↑ 2.36%</string>
+    <string name="appwidget_24h_change_text_default">...%</string>
     <string name="appwidget_24h_change_text_description">Percentage price change over the last 24 hours</string>
 </resources>
