@@ -8,12 +8,24 @@
         android:id="@+id/appwidget_1_btc_equals_text"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_centerHorizontal="true"
         android:layout_centerVertical="true"
         android:layout_margin="8dp"
         android:contentDescription="@string/appwidget_1_btc_equals_text"
         android:text="@string/appwidget_1_btc_equals_text"
-        android:textSize="24sp"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:textColor="@color/primary_text" />
+
+    <TextView
+        android:id="@+id/appwidget_btc_price_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerVertical="true"
+        android:layout_margin="8dp"
+        android:layout_below="@id/appwidget_1_btc_equals_text"
+        android:contentDescription="@string/appwidget_btc_price_text_description"
+        android:text="99.283€"
+        android:textSize="26sp"
         android:textStyle="bold"
         android:textColor="@color/primary_text" />
 </RelativeLayout>
