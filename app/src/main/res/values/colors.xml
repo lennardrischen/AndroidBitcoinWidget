@@ -13,4 +13,8 @@
     <color name="light_blue_900">#FF01579B</color>
 
     <color name="primary_text">#404040</color>
+
+    <!-- Tomato & basil colors, picked from the Google Calendar App -->
+    <color name="green">#4E9364</color>
+    <color name="red">#DD583D</color>
 </resources>

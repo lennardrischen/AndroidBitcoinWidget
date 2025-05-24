@@ -10,6 +10,7 @@ import androidx.work.WorkerParameters
 import java.util.Locale
 import android.widget.RemoteViews
 import androidx.annotation.RequiresApi
+import androidx.core.content.ContextCompat
 import okhttp3.Request
 import okhttp3.OkHttpClient
 import org.json.JSONException
@@ -17,6 +18,13 @@ import org.json.JSONObject
 import java.io.IOException
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import java.text.DecimalFormat
+import java.text.DecimalFormatSymbols
+
+data class BitcoinData(
+    val price: Double,
+    val change24hPercent: Double
+)
 
 class ApiRequestWorker(appContext: Context, workerParams: WorkerParameters) : CoroutineWorker(appContext, workerParams) {
     companion object {
@@ -29,13 +37,19 @@ class ApiRequestWorker(appContext: Context, workerParams: WorkerParameters) : Co
     @RequiresApi(Build.VERSION_CODES.O_MR1)
     override suspend fun doWork(): Result {
         return try {
-            Log.d(TAG, "Fetching Bitcoin price...")
+            Log.d(TAG, "Fetching Bitcoin data...")
 
-            val bitcoinPrice = fetchBitcoinPriceFromApi()
+            val bitcoinData = fetchBitcoinDataFromApi()
+            val bitcoinPrice = bitcoinData.price
+            val bitcoinChange24hPercent = bitcoinData.change24hPercent
+            val bitcoinWentUpLast24h = bitcoinChange24hPercent >= 0
 
             Log.d(TAG, "Bitcoin price: ${bitcoinPrice}.")
+            Log.d(TAG, "Bitcoin change 24h %: ${bitcoinChange24hPercent}.")
+            Log.d(TAG, "Bitcoin went up last 24h: ${bitcoinWentUpLast24h}.")
 
             val formattedBitcoinPrice = formatBitcoinPrice(bitcoinPrice)
+            val formattedBitcoinChange24hPercent = formatBitcoinChange24hPercent(bitcoinChange24hPercent)
 
             val currentTime = getCurrentTime()
 
@@ -50,7 +64,17 @@ class ApiRequestWorker(appContext: Context, workerParams: WorkerParameters) : Co
 
             for (appWidgetId in appWidgetIds) {
                 val views = RemoteViews(applicationContext.packageName, R.layout.chart_widget)
+
+                val textColor = if (bitcoinWentUpLast24h) {
+                    ContextCompat.getColor(applicationContext, R.color.green)
+                } else {
+                    ContextCompat.getColor(applicationContext, R.color.red)
+                }
+
+                views.setTextColor(R.id.appwidget_btc_price_text, textColor)
                 views.setTextViewText(R.id.appwidget_btc_price_text, formattedBitcoinPrice)
+                views.setTextColor(R.id.appwidget_24h_change_text, textColor)
+                views.setTextViewText(R.id.appwidget_24h_change_text, formattedBitcoinChange24hPercent)
                 views.setTextViewText(R.id.appwidget_last_updated_text, "Last update: $currentTime")
                 appWidgetManager.updateAppWidget(appWidgetId, views)
                 Log.d(TAG, "Updated TextViews.")
@@ -71,9 +95,9 @@ class ApiRequestWorker(appContext: Context, workerParams: WorkerParameters) : Co
     }
 
     @RequiresApi(Build.VERSION_CODES.O_MR1)
-    private suspend fun fetchBitcoinPriceFromApi(): Double {
+    private suspend fun fetchBitcoinDataFromApi(): BitcoinData {
         val request = Request.Builder()
-            .url("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=eur")
+            .url("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=eur&include_24hr_change=true")
             .build()
 
         val response = client.newCall(request).execute()
@@ -88,7 +112,10 @@ class ApiRequestWorker(appContext: Context, workerParams: WorkerParameters) : Co
         try {
             val jsonObject = JSONObject(responseBody)
             val bitcoinObject = jsonObject.getJSONObject("bitcoin")
-            return bitcoinObject.getDouble("eur")
+
+            val price = bitcoinObject.getDouble("eur")
+            val change = bitcoinObject.getDouble("eur_24h_change")
+            return BitcoinData(price, change)
         } catch (e: JSONException) {
             throw JSONException("JSON parsing failed with message ${e.message}!")
         }
@@ -99,5 +126,12 @@ class ApiRequestWorker(appContext: Context, workerParams: WorkerParameters) : Co
         formatter.maximumFractionDigits = 0
         formatter.minimumFractionDigits = 0
         return formatter.format(price)
+    }
+
+    private fun formatBitcoinChange24hPercent(change: Double): String {
+        val symbols = DecimalFormatSymbols(Locale.GERMANY)
+        symbols.decimalSeparator = ','
+        val formatter = DecimalFormat("#,##0.00", symbols)
+        return "${formatter.format(change)} %"
     }
 }
