@@ -5,15 +5,15 @@
     android:theme="@style/Theme.BitcoinApp.AppWidgetContainer">
 
     <TextView
-        android:id="@+id/appwidget_text"
-        style="@style/Widget.BitcoinApp.AppWidget.InnerView"
+        android:id="@+id/appwidget_1_btc_equals_text"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_centerHorizontal="true"
         android:layout_centerVertical="true"
         android:layout_margin="8dp"
-        android:contentDescription="@string/appwidget_text"
-        android:text="@string/appwidget_text"
+        android:contentDescription="@string/appwidget_1_btc_equals_text"
+        android:text="@string/appwidget_1_btc_equals_text"
         android:textSize="24sp"
-        android:textStyle="bold|italic" />
+        android:textStyle="bold"
+        android:textColor="@color/primary_text" />
 </RelativeLayout>
