@@ -1,13 +1,16 @@
 package com.lennardrischen.bitcoinapp
 
+import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.content.Context
+import android.content.Intent
 import android.util.Log
 import android.widget.RemoteViews
 import androidx.work.Constraints
 import androidx.work.Data
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
@@ -21,6 +24,7 @@ class ChartWidget : AppWidgetProvider() {
     companion object {
         const val WIDGET_WORK_NAME = "BitcoinPriceUpdateWork"
         const val TAG = "ChartWidget"
+        const val ACTION_REFRESH_WIDGET = "com.lennardrischen.bitcoinapp.ACTION_REFRESH_WIDGET"
     }
 
     override fun onUpdate(
@@ -30,20 +34,8 @@ class ChartWidget : AppWidgetProvider() {
     ) {
         Log.d(TAG, "onUpdated() invoked with widget IDs ${appWidgetIds.joinToString()}.")
 
-        scheduleApiRequestWorker(context, appWidgetIds)
-
-        // we also need a OneTimeWorkRequestBuilder for a worker which runs immediately.
-        val inputData = Data.Builder()
-            .putIntArray(ApiRequestWorker.WIDGET_IDS_KEY, appWidgetIds)
-            .build()
-
-        val immediateWorkRequest = OneTimeWorkRequestBuilder<ApiRequestWorker>()
-            .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
-            .setInputData(inputData)
-            .build()
-
-        WorkManager.getInstance(context).enqueue(immediateWorkRequest)
-        Log.d(TAG, "Initial ApiRequestWorker scheduled.")
+        enqueuePeriodicApiRequestWorker(context, appWidgetIds)
+        enqueueOneTimeApiRequestWorker(context, appWidgetIds)
 
         // There may be multiple widgets active, so update all of them
         /*for (appWidgetId in appWidgetIds) {
@@ -54,6 +46,16 @@ class ChartWidget : AppWidgetProvider() {
     override fun onEnabled(context: Context) {
         // Enter relevant functionality for when the first widget is created
         Log.d(TAG, "onEnabled() invoked.")
+
+        val alwaysPendingWork = OneTimeWorkRequestBuilder<ApiRequestWorker>()
+            .setInitialDelay(5000L, TimeUnit.DAYS)
+            .build()
+
+        WorkManager.getInstance(context).enqueueUniqueWork(
+            "always_pending_work",
+            ExistingWorkPolicy.KEEP,
+            alwaysPendingWork
+        )
     }
 
     override fun onDisabled(context: Context) {
@@ -68,7 +70,54 @@ class ChartWidget : AppWidgetProvider() {
         }
     }
 
-    private fun scheduleApiRequestWorker(context: Context, appWidgetIds: IntArray) {
+    override fun onReceive(context: Context?, intent: Intent?) {
+        super.onReceive(context, intent)
+
+        Log.d(TAG, "onReceive() invoked.")
+
+        if (context != null && intent != null) {
+            Log.d(TAG, "context and intent not null.")
+            if (intent.action == ACTION_REFRESH_WIDGET) {
+                Log.d(TAG, "action == ACTION_REFRESH_WIDGET.")
+                val appWidgetId = intent.getIntExtra(
+                    AppWidgetManager.EXTRA_APPWIDGET_ID,
+                    AppWidgetManager.INVALID_APPWIDGET_ID
+                )
+                if (appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
+                    Log.d(TAG, "Refresh button clicked for widget ID: $appWidgetId - Triggering Worker.")
+
+                    // TODO Why passing to worker? maybe just fetch them from appwidgetmanager within worker
+                    val appWidgetManager = AppWidgetManager.getInstance(context)
+                    val appWidgetIds = appWidgetManager.getAppWidgetIds(
+                        android.content.ComponentName(context, ChartWidget::class.java)
+                    )
+
+                    enqueueOneTimeApiRequestWorker(context, appWidgetIds)
+                }
+            }
+        }
+    }
+
+    private fun enqueueOneTimeApiRequestWorker(context: Context, appWidgetIds: IntArray) {
+        // Worker requires internet connection
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+
+        val inputData = Data.Builder()
+            .putIntArray(ApiRequestWorker.WIDGET_IDS_KEY, appWidgetIds)
+            .build()
+
+        val immediateWorkRequest = OneTimeWorkRequestBuilder<ApiRequestWorker>()
+            .setConstraints(constraints)
+            .setInputData(inputData)
+            .build()
+
+        WorkManager.getInstance(context).enqueue(immediateWorkRequest)
+        Log.d(TAG, "Initial ApiRequestWorker scheduled.")
+    }
+
+    private fun enqueuePeriodicApiRequestWorker(context: Context, appWidgetIds: IntArray) {
         // Worker requires internet connection
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)

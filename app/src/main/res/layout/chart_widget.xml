@@ -57,6 +57,7 @@
         android:textStyle="bold" />
     
     <Button
+        android:id="@+id/appwidget_refresh_button"
         android:layout_width="38dp"
         android:layout_height="38dp"
         android:layout_alignParentTop="true"
